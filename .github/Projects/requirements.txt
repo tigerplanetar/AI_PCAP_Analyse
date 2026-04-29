@@ -1,0 +1,27 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# AI PCAP Network Analyser — Python dependencies
+# ═══════════════════════════════════════════════════════════════════════════════
+# Install:  pip install -r requirements.txt
+# Python:   3.9 or newer recommended
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── REQUIRED — Live capture from Extreme / Cisco switches ────────────────────
+paramiko>=3.0.0            # SSH transport for live switch capture (--protocol ssh)
+scp>=0.15.0                # PCAP file transfer from switch over SCP
+
+# ── OPTIONAL — AI / semantic search features ─────────────────────────────────
+# Only needed if using the built-in knowledge retriever / semantic PCAP search.
+# Comment out if you do not need AI features (saves ~1 GB of download).
+sentence-transformers>=2.2.2   # Semantic embedding for protocol knowledge base
+numpy>=1.24.0                  # Required by sentence-transformers
+
+# ── OPTIONAL — Ollama / local LLM (no pip package needed) ────────────────────
+# Ollama runs as a local service.  Install from https://ollama.com/
+# The dashboard connects to it automatically at http://localhost:11434
+# No pip install required.
+
+# ── STDLIB — All other imports are Python standard library ───────────────────
+# os, json, struct, time, threading, webbrowser, socket, argparse, sys,
+# base64, subprocess, signal, tempfile, re, platform, pathlib, math,
+# hashlib, http.server, urllib, csv, io, queue, stat, select, fcntl,
+# pty  (Unix/macOS only — not required on Windows)

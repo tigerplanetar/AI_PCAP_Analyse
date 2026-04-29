@@ -1,0 +1,1841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NetScope — AI Network Analyzer</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
+:root {
+  --bg:       #03070f;
+  --surface:  #070e1a;
+  --card:     #0b1525;
+  --border:   #142035;
+  --border2:  #1e3050;
+  --text:     #d8eaf8;
+  --muted:    #4a7090;
+  --dim:      #253545;
+
+  --cyan:     #00d4ff;
+  --green:    #00e5a0;
+  --orange:   #ff7c35;
+  --purple:   #9b6dff;
+  --red:      #ff4560;
+  --yellow:   #ffd166;
+  --pink:     #ff5fa0;
+  --teal:     #2cf4c8;
+
+  --mono: 'Space Mono', monospace;
+  --sans: 'Outfit', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── GRID BACKGROUND ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
+/* ── SCANLINE ── */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.08) 2px,
+    rgba(0,0,0,0.08) 4px
+  );
+  pointer-events: none;
+}
+
+.wrap { max-width: 1200px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+/* ══════════════════════════════════════════════
+   HERO
+══════════════════════════════════════════════ */
+.hero {
+  padding: 80px 0 60px;
+  text-align: center;
+  position: relative;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0,212,255,0.08);
+  border: 1px solid rgba(0,212,255,0.25);
+  border-radius: 100px;
+  padding: 6px 18px;
+  font: 600 11px var(--mono);
+  letter-spacing: 0.18em;
+  color: var(--cyan);
+  text-transform: uppercase;
+  margin-bottom: 28px;
+  animation: fadeDown 0.7s ease both;
+}
+
+.hero-badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+  animation: blink 1.8s infinite;
+}
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+h1 {
+  font: 900 clamp(2.8rem, 7vw, 5.2rem)/1.05 var(--sans);
+  letter-spacing: -0.03em;
+  color: #fff;
+  margin-bottom: 16px;
+  animation: fadeDown 0.7s 0.1s ease both;
+}
+
+h1 .accent { color: var(--cyan); }
+h1 .dim-word { color: var(--muted); font-weight: 300; }
+
+.hero-sub {
+  font: 400 1.15rem/1.6 var(--sans);
+  color: var(--muted);
+  max-width: 640px;
+  margin: 0 auto 40px;
+  animation: fadeDown 0.7s 0.2s ease both;
+}
+
+.hero-pills {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  animation: fadeDown 0.7s 0.3s ease both;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 8px;
+  font: 600 11px var(--mono);
+  letter-spacing: 0.06em;
+  border: 1px solid;
+  transition: all 0.2s ease;
+  cursor: default;
+}
+.pill:hover { transform: translateY(-2px); filter: brightness(1.2); }
+
+.pill-cyan  { background:rgba(0,212,255,0.08);   border-color:rgba(0,212,255,0.3);   color:var(--cyan); }
+.pill-green { background:rgba(0,229,160,0.08);   border-color:rgba(0,229,160,0.3);   color:var(--green); }
+.pill-orange{ background:rgba(255,124,53,0.08);  border-color:rgba(255,124,53,0.3);  color:var(--orange); }
+.pill-purple{ background:rgba(155,109,255,0.08); border-color:rgba(155,109,255,0.3); color:var(--purple); }
+
+/* ══════════════════════════════════════════════
+   SECTION HEADERS
+══════════════════════════════════════════════ */
+.section { padding: 64px 0 0; }
+
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 700 10px var(--mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+.section-label::before {
+  content: '';
+  display: inline-block;
+  width: 24px; height: 1px;
+  background: var(--muted);
+}
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--border2), transparent);
+}
+
+.section-title {
+  font: 800 clamp(1.5rem,3.5vw,2.2rem)/1.1 var(--sans);
+  color: #fff;
+  letter-spacing: -0.02em;
+  margin-bottom: 40px;
+}
+.section-title span { color: var(--cyan); }
+
+/* ══════════════════════════════════════════════
+   STAT ROW
+══════════════════════════════════════════════ */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 60px;
+  animation: fadeUp 0.7s 0.4s ease both;
+}
+
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 20px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.stat-card:hover { border-color: var(--border2); transform: translateY(-3px); }
+.stat-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--sc);
+  border-radius: 14px 14px 0 0;
+}
+.stat-n  { font: 800 2rem var(--mono); color: var(--sc); line-height: 1; margin-bottom: 6px; }
+.stat-l  { font: 600 11px var(--sans); text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+.stat-sub{ font: 400 10px var(--mono); color: var(--dim); margin-top: 4px; }
+
+/* ══════════════════════════════════════════════
+   PIPELINE — MAIN WORKFLOW
+══════════════════════════════════════════════ */
+.pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+
+.pipeline-step {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 0 28px;
+  position: relative;
+  animation: fadeUp 0.5s ease both;
+}
+
+/* Vertical connector line */
+.pipeline-step:not(:last-child) .step-line {
+  position: absolute;
+  left: 35px;
+  top: 72px;
+  bottom: -20px;
+  width: 2px;
+  background: linear-gradient(180deg, var(--step-color) 0%, var(--border) 100%);
+  z-index: 0;
+}
+
+.step-icon-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 1;
+  padding-top: 4px;
+}
+
+.step-icon {
+  width: 52px; height: 52px;
+  border-radius: 14px;
+  border: 2px solid var(--step-color);
+  background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 0 20px var(--step-glow);
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  z-index: 2;
+}
+.step-icon:hover { transform: scale(1.08); box-shadow: 0 0 30px var(--step-glow); }
+
+.step-num {
+  font: 700 9px var(--mono);
+  color: var(--step-color);
+  margin-top: 6px;
+  letter-spacing: 0.1em;
+}
+
+.step-body {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--step-color);
+  border-radius: 0 14px 14px 0;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+.step-body:hover {
+  border-color: var(--step-color);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.step-tag {
+  font: 700 9px var(--mono);
+  letter-spacing: 0.15em;
+  padding: 3px 9px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.step-title {
+  font: 700 1rem var(--sans);
+  color: #fff;
+  flex: 1;
+}
+
+.step-desc {
+  font: 400 13px var(--sans);
+  color: var(--muted);
+  line-height: 1.65;
+  margin-bottom: 14px;
+}
+
+.step-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  font: 600 9px var(--mono);
+  padding: 3px 9px;
+  border-radius: 5px;
+  border: 1px solid var(--border2);
+  color: var(--step-color);
+  background: transparent;
+  letter-spacing: 0.06em;
+}
+
+/* Expand panel */
+.step-expand {
+  display: none;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.step-expand.open { display: block; }
+
+.step-expand-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.expand-item {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.expand-item .ei-label { font: 700 9px var(--mono); color: var(--step-color); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+.expand-item .ei-val   { font: 400 11px var(--sans); color: var(--muted); line-height: 1.5; }
+
+.step-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font: 600 10px var(--mono);
+  color: var(--step-color);
+  background: none;
+  border: 1px solid var(--step-color);
+  border-radius: 5px;
+  padding: 3px 10px;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: all 0.15s;
+  letter-spacing: 0.08em;
+}
+.step-toggle:hover { background: rgba(255,255,255,0.05); }
+.step-toggle .arrow { transition: transform 0.2s; font-size: 10px; }
+.step-toggle.open .arrow { transform: rotate(180deg); }
+
+/* ══════════════════════════════════════════════
+   AI SIDEBAR MODES
+══════════════════════════════════════════════ */
+.modes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 60px;
+}
+
+.mode-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 18px;
+  transition: all 0.2s ease;
+  cursor: default;
+  position: relative;
+  overflow: hidden;
+}
+.mode-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at top left, var(--mc-glow) 0%, transparent 65%);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.mode-card:hover { border-color: var(--mc-color); transform: translateY(-3px); }
+.mode-card:hover::before { opacity: 1; }
+
+.mc-icon { font-size: 26px; margin-bottom: 12px; }
+.mc-name { font: 700 13px var(--sans); color: #fff; margin-bottom: 6px; }
+.mc-route {
+  font: 600 9px var(--mono);
+  color: var(--mc-color);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 2px 7px;
+  display: inline-block;
+  margin-bottom: 10px;
+  letter-spacing: 0.06em;
+}
+.mc-desc { font: 400 11px var(--sans); color: var(--muted); line-height: 1.55; }
+
+/* ══════════════════════════════════════════════
+   ARCHITECTURE — THREE COLUMN
+══════════════════════════════════════════════ */
+.arch-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 60px;
+}
+
+@media (max-width: 800px) {
+  .arch-cols { grid-template-columns: 1fr; }
+  .pipeline-step { grid-template-columns: 52px 1fr; gap: 0 16px; }
+  .step-icon { width: 44px; height: 44px; font-size: 18px; }
+}
+
+.arch-col {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.arch-col-header {
+  padding: 14px 18px;
+  background: rgba(0,0,0,0.3);
+  border-bottom: 1px solid var(--border);
+  font: 700 10px var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--ac-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.arch-col-header::before {
+  content: '';
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--ac-color);
+  box-shadow: 0 0 8px var(--ac-color);
+}
+
+.arch-item {
+  padding: 10px 18px;
+  border-bottom: 1px solid rgba(20,32,53,0.8);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  transition: background 0.15s;
+}
+.arch-item:hover { background: rgba(255,255,255,0.02); }
+.arch-item:last-child { border-bottom: none; }
+.arch-item-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+.arch-item-name { font: 600 12px var(--sans); color: var(--text); margin-bottom: 2px; }
+.arch-item-desc { font: 400 10px var(--sans); color: var(--muted); line-height: 1.4; }
+
+/* ══════════════════════════════════════════════
+   FLOW DIAGRAMS
+══════════════════════════════════════════════ */
+.flow-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 60px;
+}
+@media (max-width: 700px) { .flow-grid { grid-template-columns: 1fr; } }
+
+.flow-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.flow-card-header {
+  padding: 14px 18px;
+  background: rgba(0,0,0,0.3);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.flow-card-header .fh-icon { font-size: 16px; }
+.flow-card-header .fh-title { font: 700 12px var(--sans); color: #fff; }
+.flow-card-header .fh-badge {
+  margin-left: auto;
+  font: 600 8px var(--mono);
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.flow-steps {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.flow-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(20,32,53,0.6);
+  position: relative;
+}
+.flow-item:last-child { border-bottom: none; }
+
+.flow-dot {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--fi-color);
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  font: 700 9px var(--mono);
+  color: var(--fi-color);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.flow-content {}
+.flow-label { font: 600 12px var(--sans); color: var(--text); margin-bottom: 3px; }
+.flow-detail { font: 400 10px var(--mono); color: var(--muted); line-height: 1.5; }
+
+/* ══════════════════════════════════════════════
+   TECH STACK TABLE
+══════════════════════════════════════════════ */
+.tech-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 60px;
+  font-size: 12px;
+}
+
+.tech-table th {
+  background: rgba(0,0,0,0.4);
+  padding: 10px 16px;
+  text-align: left;
+  font: 700 9px var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  border-bottom: 2px solid var(--border2);
+}
+
+.tech-table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid rgba(20,32,53,0.6);
+  vertical-align: top;
+}
+
+.tech-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+.tech-table .td-layer {
+  font: 700 10px var(--mono);
+  color: var(--cyan);
+  white-space: nowrap;
+}
+.tech-table .td-name { font: 600 12px var(--sans); color: var(--text); }
+.tech-table .td-tech { font: 400 10px var(--mono); color: var(--purple); }
+.tech-table .td-desc { font: 400 11px var(--sans); color: var(--muted); line-height: 1.5; }
+
+/* ══════════════════════════════════════════════
+   EXAMPLE FLOWS
+══════════════════════════════════════════════ */
+.example-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 60px;
+}
+@media (max-width: 700px) { .example-grid { grid-template-columns: 1fr; } }
+
+.example-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.example-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0,0,0,0.3);
+}
+.example-header .eh-icon { font-size: 20px; }
+.example-header .eh-title { font: 700 13px var(--sans); color: #fff; }
+.example-header .eh-tag {
+  margin-left: auto;
+  font: 700 8px var(--mono);
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.example-body { padding: 18px 20px; }
+
+.example-step {
+  margin-bottom: 14px;
+  padding-left: 14px;
+  border-left: 2px solid var(--border2);
+}
+.example-step:last-child { margin-bottom: 0; }
+
+.es-label {
+  font: 700 9px var(--mono);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+
+.es-code {
+  background: rgba(0,0,0,0.5);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font: 400 10px var(--mono);
+  color: var(--green);
+  line-height: 1.6;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.es-text {
+  font: 400 11px var(--sans);
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+/* ══════════════════════════════════════════════
+   RAG SECTION
+══════════════════════════════════════════════ */
+.rag-diagram {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  margin-bottom: 30px;
+  position: relative;
+  overflow: hidden;
+}
+.rag-diagram::before {
+  content: '';
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(155,109,255,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.rag-flow {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
+  justify-content: center;
+  row-gap: 14px;
+}
+
+.rag-node {
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--rn-color);
+  border-radius: 10px;
+  padding: 10px 16px;
+  text-align: center;
+  min-width: 120px;
+  box-shadow: 0 0 16px var(--rn-glow);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.rag-node:hover { transform: translateY(-3px); box-shadow: 0 0 24px var(--rn-glow); }
+.rn-icon { font-size: 20px; margin-bottom: 4px; }
+.rn-name { font: 700 11px var(--sans); color: var(--rn-color); margin-bottom: 3px; }
+.rn-sub  { font: 400 9px var(--mono); color: var(--muted); }
+
+.rag-arrow {
+  font-size: 16px;
+  color: var(--border2);
+  padding: 0 6px;
+  flex-shrink: 0;
+}
+
+.rag-kb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.kb-item {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 600 10px var(--mono);
+  color: var(--purple);
+  transition: border-color 0.2s;
+}
+.kb-item:hover { border-color: var(--purple); }
+.kb-item .ki-icon { font-size: 14px; }
+
+/* ══════════════════════════════════════════════
+   API REFERENCE TABLE
+══════════════════════════════════════════════ */
+.api-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 60px;
+  font-size: 12px;
+}
+.api-table th {
+  background: rgba(0,0,0,0.4);
+  padding: 10px 16px;
+  text-align: left;
+  font: 700 9px var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  border-bottom: 2px solid var(--border2);
+}
+.api-table td {
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(20,32,53,0.6);
+  vertical-align: middle;
+}
+.api-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+.method-badge {
+  font: 700 9px var(--mono);
+  padding: 2px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.m-get  { background:rgba(0,229,160,0.12);  color:var(--green);  border:1px solid rgba(0,229,160,0.3);  }
+.m-post { background:rgba(255,124,53,0.12); color:var(--orange); border:1px solid rgba(255,124,53,0.3); }
+.m-ws   { background:rgba(0,212,255,0.12);  color:var(--cyan);   border:1px solid rgba(0,212,255,0.3);  }
+
+.api-path  { font: 600 11px var(--mono); color: var(--text); }
+.api-desc  { font: 400 11px var(--sans); color: var(--muted); }
+
+/* ══════════════════════════════════════════════
+   FOOTER
+══════════════════════════════════════════════ */
+.footer {
+  padding: 48px 0;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 40px;
+}
+
+.footer-brand { font: 700 13px var(--mono); color: var(--cyan); }
+.footer-note  { font: 400 10px var(--mono); color: var(--muted); }
+.footer-tags  { display: flex; gap: 8px; flex-wrap: wrap; }
+.footer-tag   {
+  font: 400 9px var(--mono);
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border2);
+  color: var(--dim);
+  letter-spacing: 0.08em;
+}
+
+/* ══════════════════════════════════════════════
+   ANIMATIONS
+══════════════════════════════════════════════ */
+@keyframes fadeDown { from{opacity:0;transform:translateY(-16px)} to{opacity:1;transform:none} }
+@keyframes fadeUp   { from{opacity:0;transform:translateY(20px)}  to{opacity:1;transform:none} }
+
+.pipeline-step:nth-child(1) { animation-delay: 0.05s }
+.pipeline-step:nth-child(2) { animation-delay: 0.12s }
+.pipeline-step:nth-child(3) { animation-delay: 0.19s }
+.pipeline-step:nth-child(4) { animation-delay: 0.26s }
+.pipeline-step:nth-child(5) { animation-delay: 0.33s }
+.pipeline-step:nth-child(6) { animation-delay: 0.40s }
+.pipeline-step:nth-child(7) { animation-delay: 0.47s }
+.pipeline-step:nth-child(8) { animation-delay: 0.54s }
+
+/* Active pulse on step icons on hover */
+.step-icon::after {
+  content: '';
+  position: absolute; inset: -4px;
+  border-radius: 17px;
+  border: 2px solid var(--step-color);
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  transform: scale(0.85);
+}
+.step-icon:hover::after { opacity: 0.4; transform: scale(1.05); }
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ HERO ═══════════════════════════ -->
+<div class="wrap">
+  <section class="hero">
+    <div class="hero-badge">NetScope · AI Network Analyzer · v3</div>
+    <h1>
+      <span class="dim-word">One tool.</span><br>
+      <span class="accent">Capture · Decode · Detect · Explain.</span>
+    </h1>
+    <p class="hero-sub">
+      AI-powered PCAP analysis dashboard with live switch capture, multi-layer anomaly detection, 
+      and an in-browser AI Protocol Analyst — running entirely from two Python files, zero CDN.
+    </p>
+    <div class="hero-pills">
+      <span class="pill pill-cyan">📡 Live EXOS Capture</span>
+      <span class="pill pill-green">🔬 L1–L7 Parsing</span>
+      <span class="pill pill-orange">🚨 Hybrid Anomaly Detection</span>
+      <span class="pill pill-purple">🤖 RAG + LLM Pipeline</span>
+      <span class="pill pill-cyan">🔌 MCP Live Switch Query</span>
+      <span class="pill pill-green">⚡ SNMP Trap Analysis</span>
+    </div>
+  </section>
+
+  <!-- ═══ STATS ═══ -->
+  <div class="stats-row">
+    <div class="stat-card" style="--sc:var(--cyan)">
+      <div class="stat-n">40+</div>
+      <div class="stat-l">Protocols Decoded</div>
+      <div class="stat-sub">L2 → L7, binary parser</div>
+    </div>
+    <div class="stat-card" style="--sc:var(--red)">
+      <div class="stat-n">30+</div>
+      <div class="stat-l">Anomaly Rules</div>
+      <div class="stat-sub">Rule + ML + LLM</div>
+    </div>
+    <div class="stat-card" style="--sc:var(--green)">
+      <div class="stat-n">7</div>
+      <div class="stat-l">Dashboard Views</div>
+      <div class="stat-sub">Zero CDN dependencies</div>
+    </div>
+    <div class="stat-card" style="--sc:var(--purple)">
+      <div class="stat-n">4</div>
+      <div class="stat-l">AI Pipeline Steps</div>
+      <div class="stat-sub">Sequential LLM reasoning</div>
+    </div>
+    <div class="stat-card" style="--sc:var(--orange)">
+      <div class="stat-n">3</div>
+      <div class="stat-l">AI Backends</div>
+      <div class="stat-sub">Ollama · Claude · OpenAI</div>
+    </div>
+    <div class="stat-card" style="--sc:var(--yellow)">
+      <div class="stat-n">2</div>
+      <div class="stat-l">Python Files</div>
+      <div class="stat-sub">stdlib-only core</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════ MAIN PIPELINE ═══════════════════════════ -->
+<div class="wrap">
+  <section class="section">
+    <div class="section-label">Core Workflow</div>
+    <h2 class="section-title">How <span>NetScope</span> works — step by step</h2>
+
+    <div class="pipeline">
+
+      <!-- STEP 1: INPUT -->
+      <div class="pipeline-step" style="--step-color:var(--cyan);--step-glow:rgba(0,212,255,0.25)">
+        <div class="step-line"></div>
+        <div class="step-icon-wrap">
+          <div class="step-icon">📥</div>
+          <div class="step-num">01</div>
+        </div>
+        <div class="step-body" onclick="toggleExpand(this)">
+          <div class="step-header">
+            <span class="step-tag">Input Layer</span>
+            <span class="step-title">Data Ingestion</span>
+            <button class="step-toggle" onclick="event.stopPropagation();toggleExpand(this.closest('.step-body'))">
+              Details <span class="arrow">▼</span>
+            </button>
+          </div>
+          <p class="step-desc">Four entry points — PCAP file upload (drag & drop or CLI), live switch capture via SSH/Telnet, SNMP trap CSV/JSON from trap managers, or trap packets embedded in a PCAP. All paths funnel into the same unified analysis pipeline.</p>
+          <div class="step-chips">
+            <span class="chip">--pcap FILE</span>
+            <span class="chip">--switch IP</span>
+            <span class="chip">POST /upload</span>
+            <span class="chip">Trap CSV upload</span>
+            <span class="chip">PCAP slot comparison</span>
+          </div>
+          <div class="step-expand">
+            <div class="step-expand-grid">
+              <div class="expand-item">
+                <div class="ei-label">PCAP / PCAPNG</div>
+                <div class="ei-val">Upload via UI drag-and-drop, CLI --pcap flag, or POST /upload endpoint. Both endian formats supported.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">Live Switch Capture</div>
+                <div class="ei-val">SSH or Telnet to EXOS switch → SFTP download of pcap file. 4-phase background capture with live progress polling.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">SNMP Trap CSV/JSON</div>
+                <div class="ei-val">Import from trap managers. Auto-detects format. Triggers dedicated snmp_trap_analyzer.py pipeline.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">Multi-Slot</div>
+                <div class="ei-val">Two PCAP slots (original/uploaded) — switch between them without re-parsing via /api/switch-pcap.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: PARSE -->
+      <div class="pipeline-step" style="--step-color:var(--green);--step-glow:rgba(0,229,160,0.25)">
+        <div class="step-line"></div>
+        <div class="step-icon-wrap">
+          <div class="step-icon">🔬</div>
+          <div class="step-num">02</div>
+        </div>
+        <div class="step-body" onclick="toggleExpand(this)">
+          <div class="step-header">
+            <span class="step-tag">Parse Engine</span>
+            <span class="step-title">Binary Packet Parser  <code style="font:600 10px var(--mono);color:var(--green);background:rgba(0,0,0,0.3);padding:1px 6px;border-radius:4px">read_pcap() → _parse_one() × N</code></span>
+            <button class="step-toggle" onclick="event.stopPropagation();toggleExpand(this.closest('.step-body'))">
+              Details <span class="arrow">▼</span>
+            </button>
+          </div>
+          <p class="step-desc">Pure-Python binary PCAP reader — no Scapy, no Wireshark dependency at runtime. Decodes every byte from Ethernet frame to application payload, building a structured packet dict per frame. Optional tshark enrichment pass adds DHCP message type names, SNMP OID strings, tunnel decodes, and any protocol beyond the binary parser's coverage.</p>
+          <div class="step-chips">
+            <span class="chip">Ethernet · 802.1Q VLAN</span>
+            <span class="chip">ARP · RARP</span>
+            <span class="chip">IPv4 · IPv6</span>
+            <span class="chip">TCP · UDP · ICMP · IGMP</span>
+            <span class="chip">SNMP ASN.1/BER</span>
+            <span class="chip">DNS · DHCP · NTP · SIP · BGP</span>
+            <span class="chip">tshark enrichment (optional)</span>
+          </div>
+          <div class="step-expand">
+            <div class="step-expand-grid">
+              <div class="expand-item">
+                <div class="ei-label">EXOS Header Strip</div>
+                <div class="ei-val">_exos_offset() auto-detects and strips EXOS proprietary capture headers (0–52 byte offsets) per packet.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">App Protocol Classification</div>
+                <div class="ei-val">_classify_app_protocol() maps port + transport → app protocol. Payload heuristics confirm (e.g. TLS record bytes, HTTP verbs).</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">SNMP ASN.1 Decode</div>
+                <div class="ei-val">_detect_snmp() parses BER-encoded SNMP payloads without tshark — extracts version, community, PDU type, trap OID.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">tshark Enrichment</div>
+                <div class="ei-val">_run_tshark() → _merge_tshark() adds DHCP message names, DNS record details, VXLAN/GRE decodes, SNMP varbind OID strings.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3: SNMP TRAP ANALYSIS (parallel) -->
+      <div class="pipeline-step" style="--step-color:var(--teal);--step-glow:rgba(44,244,200,0.2)">
+        <div class="step-line"></div>
+        <div class="step-icon-wrap">
+          <div class="step-icon">⚡</div>
+          <div class="step-num">03</div>
+        </div>
+        <div class="step-body" onclick="toggleExpand(this)">
+          <div class="step-header">
+            <span class="step-tag">Parallel Path</span>
+            <span class="step-title">SNMP Trap Analysis  <code style="font:600 10px var(--mono);color:var(--teal);background:rgba(0,0,0,0.3);padding:1px 6px;border-radius:4px">snmp_trap_analyzer.py</code></span>
+            <button class="step-toggle" onclick="event.stopPropagation();toggleExpand(this.closest('.step-body'))">
+              Details <span class="arrow">▼</span>
+            </button>
+          </div>
+          <p class="step-desc">Runs parallel to the main pipeline. Ingests trap packets from PCAP or a standalone CSV/JSON export from your trap manager. Correlates trap streams to detect link flaps, auth storms, config-change storms, and stacking events. Generates a standalone 6-section Traps tab HTML with a 0–100 risk score.</p>
+          <div class="step-chips">
+            <span class="chip">Link flap detection (30s window)</span>
+            <span class="chip">Auth-failure storm (≥3 in 60s)</span>
+            <span class="chip">Config-change storm (≥5 in 60s)</span>
+            <span class="chip">Risk Score 0–100</span>
+            <span class="chip">SNMPv3 coverage tracking</span>
+            <span class="chip">Weak community warning</span>
+          </div>
+          <div class="step-expand">
+            <div class="step-expand-grid">
+              <div class="expand-item">
+                <div class="ei-label">TrapRecord dataclass</div>
+                <div class="ei-val">frame_id, timestamp, src_ip, version, community, pdu_type, enterprise OID, generic_type, specific_code, varbinds, vendor, severity.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">Risk Score Weights</div>
+                <div class="ei-val">Security events ×15 (max 40), link flaps ×10 (max 20), auth storms ×15 (max 30), config storms ×8 (max 16), weak community +10, no SNMPv3 +8.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">HTML Output</div>
+                <div class="ei-val">6 sections: stat cards, vendor/severity charts (Canvas2D), trap events table, agents table, security panel, AI analysis button.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">Graceful Degradation</div>
+                <div class="ei-val">Imported lazily (try/except). If snmp_trap_analyzer.py is absent, Traps tab shows a placeholder — main pipeline unaffected.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 4: FEATURE EXTRACTION -->
+      <div class="pipeline-step" style="--step-color:var(--yellow);--step-glow:rgba(255,209,102,0.2)">
+        <div class="step-line"></div>
+        <div class="step-icon-wrap">
+          <div class="step-icon">📊</div>
+          <div class="step-num">04</div>
+        </div>
+        <div class="step-body" onclick="toggleExpand(this)">
+          <div class="step-header">
+            <span class="step-tag">Feature Extraction</span>
+            <span class="step-title">L2–L7 Statistical Aggregation  <code style="font:600 10px var(--mono);color:var(--yellow);background:rgba(0,0,0,0.3);padding:1px 6px;border-radius:4px">_extract_features()</code></span>
+            <button class="step-toggle" onclick="event.stopPropagation();toggleExpand(this.closest('.step-body'))">
+              Details <span class="arrow">▼</span>
+            </button>
+          </div>
+          <p class="step-desc">Transforms the flat packet list into a rich feature dictionary consumed by the Rule Engine, ML Scorer, and AI Pipeline. Builds MAC frequency tables, TCP flow maps, DNS query baselines, DHCP state machines, TTL histograms, and per-protocol session graphs across all OSI layers.</p>
+          <div class="step-chips">
+            <span class="chip">L2: MAC rate, broadcast %, ARP table</span>
+            <span class="chip">L3: TTL histogram, fragmentation, DSCP</span>
+            <span class="chip">L4: SYN/ACK ratio, RST rate, port fan-out</span>
+            <span class="chip">L5-6: TLS cipher, session count</span>
+            <span class="chip">L7: DNS rate, DHCP state machine, SNMP OIDs</span>
+          </div>
+          <div class="step-expand">
+            <div class="step-expand-grid">
+              <div class="expand-item">
+                <div class="ei-label">TCP Flow Map</div>
+                <div class="ei-val">SYN/FIN/RST/retransmit counts per (src_ip, src_port, dst_ip, dst_port) 4-tuple. Half-open detection.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">DNS Entropy</div>
+                <div class="ei-val">Per-query entropy score (unique chars / length). High-entropy long domains flagged for DNS tunneling analysis.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">DHCP State Machine</div>
+                <div class="ei-val">Tracks DISCOVER/OFFER/REQUEST/ACK/NAK per client. Starvation detection: 10 requests in 5s window.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">IP→MAC Map</div>
+                <div class="ei-val">Maps each IP to all seen MACs. Multiple MACs per IP = ARP spoofing / MITM indicator.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 5: ANOMALY DETECTION (3-layer) -->
+      <div class="pipeline-step" style="--step-color:var(--red);--step-glow:rgba(255,69,96,0.25)">
+        <div class="step-line"></div>
+        <div class="step-icon-wrap">
+          <div class="step-icon">🚨</div>
+          <div class="step-num">05</div>
+        </div>
+        <div class="step-body" onclick="toggleExpand(this)">
+          <div class="step-header">
+            <span class="step-tag">Anomaly Detection</span>
+            <span class="step-title">3-Layer Hybrid Detection Engine</span>
+            <button class="step-toggle" onclick="event.stopPropagation();toggleExpand(this.closest('.step-body'))">
+              Details <span class="arrow">▼</span>
+            </button>
+          </div>
+          <p class="step-desc">Three independent engines run in sequence — deterministic rules catch known patterns instantly, statistical ML flags statistical deviations without training data, and cross-layer correlation elevates severity when multiple independent signals converge (e.g. SYN flood + RST storm = confirmed DoS). Every finding is a structured dict with severity, OSI layer, category, title, detail, and evidence.</p>
+          <div class="step-chips">
+            <span class="chip" style="color:var(--red)">Rule Engine: 30+ L2–L7 rules</span>
+            <span class="chip" style="color:var(--orange)">ML: z-score deviation, graph fan-out</span>
+            <span class="chip" style="color:var(--pink)">Cross-layer: 5 composite patterns</span>
+            <span class="chip">Severity: critical/high/medium/low/info</span>
+          </div>
+          <div class="step-expand">
+            <div class="step-expand-grid">
+              <div class="expand-item">
+                <div class="ei-label">Rule Engine Samples</div>
+                <div class="ei-val">ARP storm, SYN flood, RST storm, port scan (15+ dst ports), NULL/XMAS scan, DHCP starvation, rogue DHCP, DNS tunneling (high entropy), MAC flood, broadcast storm >30%.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">ML Scoring</div>
+                <div class="ei-val">No external sklearn needed. Z-score-equivalent for packet rate, DNS query rate, flow size. Per-capture baselines. Confidence score 0–100 per finding.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">Cross-Layer Patterns</div>
+                <div class="ei-val">MAC Spoof (L2+L3), Confirmed DoS (SYN+RST), Network Takeover (DHCP starvation+rogue), Traffic Diversion (routing+traffic shift), Auth→Scan chain.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">Finding Structure</div>
+                <div class="ei-val">{title, detail, severity, layer, category, evidence, ai_confirmed, ai_reason, ai_mitigation}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 6: RAG ENRICHMENT -->
+      <div class="pipeline-step" style="--step-color:var(--purple);--step-glow:rgba(155,109,255,0.25)">
+        <div class="step-line"></div>
+        <div class="step-icon-wrap">
+          <div class="step-icon">📚</div>
+          <div class="step-num">06</div>
+        </div>
+        <div class="step-body" onclick="toggleExpand(this)">
+          <div class="step-header">
+            <span class="step-tag">RAG · Knowledge Base</span>
+            <span class="step-title">RFC + EXOS Knowledge Retrieval  <code style="font:600 10px var(--mono);color:var(--purple);background:rgba(0,0,0,0.3);padding:1px 6px;border-radius:4px">_RAGRetriever</code></span>
+            <button class="step-toggle" onclick="event.stopPropagation();toggleExpand(this.closest('.step-body'))">
+              Details <span class="arrow">▼</span>
+            </button>
+          </div>
+          <p class="step-desc">Before any AI call reaches the LLM, the RAG engine retrieves verified RFC + EXOS CLI knowledge grounded to the exact protocols detected in the PCAP. Eliminates hallucinated CLI commands. Built-in TF-IDF index (zero deps) upgrades to sentence-transformers dense embeddings if available. Unknown protocols get an explicit disclaimer instead of confabulated answers.</p>
+          <div class="step-chips">
+            <span class="chip">TF-IDF baseline (stdlib only)</span>
+            <span class="chip">sentence-transformers upgrade</span>
+            <span class="chip">Protocol direct lookup (priority 1)</span>
+            <span class="chip">Semantic search (priority 2)</span>
+            <span class="chip">8 chunks max / 6000 char limit</span>
+            <span class="chip">Unknown protocol disclaimer</span>
+            <span class="chip">Runbook ingestion (knowledge_base/)</span>
+          </div>
+          <div class="step-expand">
+            <div class="step-expand-grid">
+              <div class="expand-item">
+                <div class="ei-label">Built-in KB Protocols</div>
+                <div class="ei-val">EAPoL, RADIUS, ARP, STP, LLDP, TCP, ICMP, DHCP, DNS, SNMP, OSPF, BGP, VLAN, LACP/MLAG, IGMP, IPv6, NTP, VRRP — with EXOS CLI for each.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">Chunk Structure</div>
+                <div class="ei-val">{id, title, text, tags, source, rfc, layer} — direct protocol match scores 1.0, semantic results scored 0–1 by cosine similarity.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">Inject Point</div>
+                <div class="ei-val">Context prepended before user prompt as "## RFC Reference Material" block. AI instructed to prefer this over training weights.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">Extend KB</div>
+                <div class="ei-val">knowledge_base/rfc_index.json (JSON), knowledge_base/runbooks/*.txt/.md files auto-ingested. add_runbook_chunk() API for runtime additions.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 7: AI PIPELINE -->
+      <div class="pipeline-step" style="--step-color:var(--orange);--step-glow:rgba(255,124,53,0.25)">
+        <div class="step-line"></div>
+        <div class="step-icon-wrap">
+          <div class="step-icon">🤖</div>
+          <div class="step-num">07</div>
+        </div>
+        <div class="step-body" onclick="toggleExpand(this)">
+          <div class="step-header">
+            <span class="step-tag">AI Pipeline</span>
+            <span class="step-title">4-Step Sequential LLM Reasoning  <code style="font:600 10px var(--mono);color:var(--orange);background:rgba(0,0,0,0.3);padding:1px 6px;border-radius:4px">_run_ai_pipeline()</code></span>
+            <button class="step-toggle" onclick="event.stopPropagation();toggleExpand(this.closest('.step-body'))">
+              Details <span class="arrow">▼</span>
+            </button>
+          </div>
+          <p class="step-desc">A sequential 4-step LLM pipeline threads context forward from one step to the next. Not one giant prompt — each step is a focused specialist call with minimal input/output. False positives dismissed by Step 3 are struck from the final display. Gracefully degrades — each step is optional; pipeline continues if any step fails.</p>
+          <div class="step-chips">
+            <span class="chip">Step 1: Protocol Classification</span>
+            <span class="chip">Step 2: Flow Construction</span>
+            <span class="chip">Step 3: Anomaly Validation + FP removal</span>
+            <span class="chip">Step 4: Root Cause + Next Actions</span>
+            <span class="chip">Risk Score 0–100</span>
+            <span class="chip">Priority Action</span>
+          </div>
+          <div class="step-expand">
+            <div class="step-expand-grid">
+              <div class="expand-item">
+                <div class="ei-label">Step 1 · Protocol Classification</div>
+                <div class="ei-val">Input: protocol distribution, top flows, unusual port/protocol combos. Output: JSON list of classified behaviours, suspicious_protos, port mismatches.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">Step 2 · Flow Construction</div>
+                <div class="ei-val">Input: per-source stats, TCP counters, ARP pairs, no-response stats, step-1. Output: JSON session list (completed/broken/one-way/attack), session health summary.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">Step 3 · Anomaly Validation</div>
+                <div class="ei-val">Input: rule+ML findings, steps 1-2. Output: validated findings with AI confirmation, false_positive_titles list, new AI-only findings missed by rules.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">Step 4 · Root Cause</div>
+                <div class="ei-val">Input: all prior steps. Output: incidents[] with root_cause, affected_hosts, next_actions (EXOS CLI), narrative paragraph, risk_score, priority_action.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 8: DASHBOARD -->
+      <div class="pipeline-step" style="--step-color:var(--cyan);--step-glow:rgba(0,212,255,0.25)">
+        <div class="step-icon-wrap">
+          <div class="step-icon">🖥</div>
+          <div class="step-num">08</div>
+        </div>
+        <div class="step-body" onclick="toggleExpand(this)">
+          <div class="step-header">
+            <span class="step-tag">Output Layer</span>
+            <span class="step-title">Interactive Browser Dashboard  <code style="font:600 10px var(--mono);color:var(--cyan);background:rgba(0,0,0,0.3);padding:1px 6px;border-radius:4px">make_html()</code></span>
+            <button class="step-toggle" onclick="event.stopPropagation();toggleExpand(this.closest('.step-body'))">
+              Details <span class="arrow">▼</span>
+            </button>
+          </div>
+          <p class="step-desc">Single-function HTML/CSS/JS generator. Every chart, terminal, packet table, and animation is written inline — no CDN calls, works fully air-gapped. 7 tab views + AI Analyst Sidebar with 5 specialist modes. WebSocket-based PTY terminal for live switch CLI access directly from the browser.</p>
+          <div class="step-chips">
+            <span class="chip">Overview · Packets · Protocols</span>
+            <span class="chip">Anomalies · Traps · Timeline · Terminal</span>
+            <span class="chip">Canvas2D charts (no Chart.js)</span>
+            <span class="chip">WebSocket PTY terminal</span>
+            <span class="chip">Export: JSON · CSV · PCAP</span>
+            <span class="chip">Keyboard shortcuts (⌘K palette)</span>
+          </div>
+          <div class="step-expand">
+            <div class="step-expand-grid">
+              <div class="expand-item">
+                <div class="ei-label">Packet Table</div>
+                <div class="ei-val">1000-row scrollable table. Filter by protocol, IP, port, MAC, VLAN, TCP flags. Sortable. Hex dump + layer tree detail pane with resize handle.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">Flow Sequence Diagram</div>
+                <div class="ei-val">Canvas2D ladder diagram. REQ/RSP/DAT role badges. Protocol colour-coded arrows. Zoom + pan. Drag-resize. Click arrow to jump to packet.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">Timeline</div>
+                <div class="ei-val">Interactive scatter plot (time vs bytes/pkt). Drag-to-pan, scroll-to-zoom, click-to-inspect. Protocol filter buttons. Hover tooltip.</div>
+              </div>
+              <div class="expand-item">
+                <div class="ei-label">Terminal</div>
+                <div class="ei-val">WebSocket PTY (bash). Auto-SSH to switch on load. connect/tconnect helpers. History. Ctrl-C/D/X/] buttons. Escape strip for clean output.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /pipeline -->
+  </section>
+</div>
+
+<!-- ═══════════════════════════ AI SIDEBAR MODES ═══════════════════════════ -->
+<div class="wrap">
+  <section class="section">
+    <div class="section-label">AI Analyst Sidebar</div>
+    <h2 class="section-title">5 specialist <span>AI modes</span></h2>
+
+    <div class="modes-grid">
+      <div class="mode-card" style="--mc-color:var(--cyan);--mc-glow:rgba(0,212,255,0.06)">
+        <div class="mc-icon">💡</div>
+        <div class="mc-name">Insights</div>
+        <div class="mc-route">auto on load</div>
+        <p class="mc-desc">AI-generated capture summary with traffic behaviour tags, anomaly badge, risk score bar, protocol chips, and suggested next actions — all pre-computed before the user asks anything.</p>
+      </div>
+      <div class="mode-card" style="--mc-color:var(--green);--mc-glow:rgba(0,229,160,0.06)">
+        <div class="mc-icon">⚡</div>
+        <div class="mc-name">Explain</div>
+        <div class="mc-route">POST /api/chat · RAG</div>
+        <p class="mc-desc">Click any detected protocol → AI generates a deep RFC-grounded explanation of that protocol in the context of this specific capture, backed by the RAG knowledge base.</p>
+      </div>
+      <div class="mode-card" style="--mc-color:var(--purple);--mc-glow:rgba(155,109,255,0.06)">
+        <div class="mc-icon">📖</div>
+        <div class="mc-name">RFC</div>
+        <div class="mc-route">mode=rfc · RAG</div>
+        <p class="mc-desc">RFC standards analysis for any protocol in the capture. Inline links to rfc-editor.org. RAG retrieves the relevant RFC chunks before the LLM answers. Manual RFC# lookup supported.</p>
+      </div>
+      <div class="mode-card" style="--mc-color:var(--orange);--mc-glow:rgba(255,124,53,0.06)">
+        <div class="mc-icon">🔧</div>
+        <div class="mc-name">EXOS CLI</div>
+        <div class="mc-route">mode=exos · RAG</div>
+        <p class="mc-desc">Select a protocol → AI generates a 7-section Switch Engine debug guide with exact CLI commands from the official Extreme Networks v33.6.1 PDF documentation. Never hallucinated.</p>
+      </div>
+      <div class="mode-card" style="--mc-color:var(--yellow);--mc-glow:rgba(255,209,102,0.06)">
+        <div class="mc-icon">💬</div>
+        <div class="mc-name">Chat</div>
+        <div class="mc-route">multi-turn · history</div>
+        <p class="mc-desc">Free-form multi-turn conversation with full capture context injected. 20-turn memory. Switch management queries auto-routed to MCP live switch. AI backend switchable at runtime.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ═══════════════════════════ RAG ENGINE DETAIL ═══════════════════════════ -->
+<div class="wrap">
+  <section class="section">
+    <div class="section-label">RAG Implementation</div>
+    <h2 class="section-title">How the <span>Knowledge Base</span> enriches every AI answer</h2>
+
+    <div class="rag-diagram">
+      <div class="rag-flow">
+        <div class="rag-node" style="--rn-color:var(--cyan);--rn-glow:rgba(0,212,255,0.15)">
+          <div class="rn-icon">📡</div>
+          <div class="rn-name">PCAP Analysis</div>
+          <div class="rn-sub">Detected protocols</div>
+        </div>
+        <div class="rag-arrow">→</div>
+        <div class="rag-node" style="--rn-color:var(--green);--rn-glow:rgba(0,229,160,0.15)">
+          <div class="rn-icon">🔍</div>
+          <div class="rn-name">RAG Retriever</div>
+          <div class="rn-sub">Direct + semantic lookup</div>
+        </div>
+        <div class="rag-arrow">→</div>
+        <div class="rag-node" style="--rn-color:var(--purple);--rn-glow:rgba(155,109,255,0.15)">
+          <div class="rn-icon">📚</div>
+          <div class="rn-name">Knowledge Base</div>
+          <div class="rn-sub">RFC + EXOS chunks</div>
+        </div>
+        <div class="rag-arrow">→</div>
+        <div class="rag-node" style="--rn-color:var(--orange);--rn-glow:rgba(255,124,53,0.15)">
+          <div class="rn-icon">✍️</div>
+          <div class="rn-name">Context Injection</div>
+          <div class="rn-sub">Prepended to prompt</div>
+        </div>
+        <div class="rag-arrow">→</div>
+        <div class="rag-node" style="--rn-color:var(--yellow);--rn-glow:rgba(255,209,102,0.15)">
+          <div class="rn-icon">🤖</div>
+          <div class="rn-name">LLM Response</div>
+          <div class="rn-sub">Grounded answer</div>
+        </div>
+      </div>
+
+      <div class="rag-kb-grid">
+        <div class="kb-item"><span class="ki-icon">🔐</span>EAPoL / 802.1X + EXOS NetLogin</div>
+        <div class="kb-item"><span class="ki-icon">🔑</span>RADIUS RFC 2865 + EXOS config</div>
+        <div class="kb-item"><span class="ki-icon">🌐</span>ARP RFC 826 + DAI commands</div>
+        <div class="kb-item"><span class="ki-icon">🌀</span>STP/RSTP 802.1D + EXOS stpd</div>
+        <div class="kb-item"><span class="ki-icon">📡</span>LLDP 802.1AB + LLDP-MED</div>
+        <div class="kb-item"><span class="ki-icon">🚦</span>OSPF RFC 2328 + EXOS ospf</div>
+        <div class="kb-item"><span class="ki-icon">🗺</span>BGP RFC 4271 + EXOS bgp</div>
+        <div class="kb-item"><span class="ki-icon">📦</span>VLAN 802.1Q tagged/untagged</div>
+        <div class="kb-item"><span class="ki-icon">🔗</span>LACP/MLAG 802.3ad + sharing</div>
+        <div class="kb-item"><span class="ki-icon">📊</span>SNMP RFC 3411 + trap config</div>
+        <div class="kb-item"><span class="ki-icon">🏠</span>DHCP RFC 2131 + snooping</div>
+        <div class="kb-item"><span class="ki-icon">📋</span>Your runbooks (auto-ingested)</div>
+      </div>
+    </div>
+
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-bottom:40px">
+      <div style="font:700 10px var(--mono);letter-spacing:0.15em;text-transform:uppercase;color:var(--purple);margin-bottom:12px">▸ How ask_ai() routes and enriches every query</div>
+      <pre style="font:400 11px var(--mono);color:var(--muted);line-height:1.9;overflow-x:auto;background:none;border:none;padding:0;white-space:pre-wrap"><span style="color:var(--dim)">User sends chat message</span>
+         │
+         ▼
+<span style="color:var(--cyan)">ask_ai(prompt, protocols=detected_protos)</span>
+         │
+         ├─ <span style="color:var(--orange)">_is_mcp_query(prompt)?</span>  ──yes──► <span style="color:var(--teal)">_ask_mcp()</span>  →  live EXOS switch data
+         │
+         ├─ <span style="color:var(--purple)">protocols provided?</span>
+         │        │
+         │        ▼
+         │  <span style="color:var(--purple)">_RAGRetriever.search(protocols)</span>
+         │  → Pass 1: direct protocol lookup  (score = 1.0)
+         │  → Pass 2: TF-IDF / dense semantic search
+         │  → Collect up to 8 chunks, max 6000 chars
+         │  → Prepend as "## RFC Reference Material" block
+         │  → Unknown protocols get ⚠️ disclaimer
+         │
+         ▼
+<span style="color:var(--yellow)">enriched_prompt  =  RFC context  +  "## User Query"  +  original_prompt</span>
+         │
+         ├─ AI_BACKEND == 'claude'  ──► <span style="color:var(--orange)">_ask_claude(enriched_prompt)</span>
+         ├─ AI_BACKEND == 'openai'  ──► <span style="color:var(--green)">_ask_openai(enriched_prompt)</span>
+         └─ default                 ──► <span style="color:var(--cyan)">_ask_ollama(enriched_prompt)</span></pre>
+    </div>
+  </section>
+</div>
+
+<!-- ═══════════════════════════ ARCHITECTURE COLUMNS ═══════════════════════════ -->
+<div class="wrap">
+  <section class="section">
+    <div class="section-label">Component Map</div>
+    <h2 class="section-title">What's inside the <span>two files</span></h2>
+
+    <div class="arch-cols">
+      <div class="arch-col" style="--ac-color:var(--cyan)">
+        <div class="arch-col-header">AI_PCAP_new_Apr27.py — Core</div>
+        <div class="arch-item"><span class="arch-item-icon">📦</span><div><div class="arch-item-name">read_pcap() + _parse_one()</div><div class="arch-item-desc">Binary PCAP reader, L2–L7 decoder, EXOS header stripper</div></div></div>
+        <div class="arch-item"><span class="arch-item-icon">🔬</span><div><div class="arch-item-name">_extract_features()</div><div class="arch-item-desc">L2–L7 statistical feature extraction into structured dict</div></div></div>
+        <div class="arch-item"><span class="arch-item-icon">🚨</span><div><div class="arch-item-name">_rule_engine() + _ml_score()</div><div class="arch-item-desc">Deterministic rules + statistical anomaly scoring</div></div></div>
+        <div class="arch-item"><span class="arch-item-icon">🔗</span><div><div class="arch-item-name">_cross_layer_correlate()</div><div class="arch-item-desc">Composite multi-signal pattern detection</div></div></div>
+        <div class="arch-item"><span class="arch-item-icon">🤖</span><div><div class="arch-item-name">_run_ai_pipeline() (4 steps)</div><div class="arch-item-desc">Sequential LLM protocol classify → flow → validate → RCA</div></div></div>
+        <div class="arch-item"><span class="arch-item-icon">📚</span><div><div class="arch-item-name">_RAGRetriever (embedded)</div><div class="arch-item-desc">TF-IDF index, KB loader, retrieve_rfc_for_protocols()</div></div></div>
+        <div class="arch-item"><span class="arch-item-icon">🔌</span><div><div class="arch-item-name">_ask_mcp() + MCP protocol</div><div class="arch-item-desc">Stdlib SSE client → exos-mcp-server → live switch CLI</div></div></div>
+        <div class="arch-item"><span class="arch-item-icon">🖥</span><div><div class="arch-item-name">make_html()</div><div class="arch-item-desc">Single-function dashboard generator, all assets inline</div></div></div>
+        <div class="arch-item"><span class="arch-item-icon">🌐</span><div><div class="arch-item-name">ThreadingHTTPServer</div><div class="arch-item-desc">Serves dashboard + REST API + WebSocket PTY terminal</div></div></div>
+      </div>
+
+      <div class="arch-col" style="--ac-color:var(--teal)">
+        <div class="arch-col-header">snmp_trap_analyzer.py</div>
+        <div class="arch-item"><span class="arch-item-icon">⚡</span><div><div class="arch-item-name">TrapRecord dataclass</div><div class="arch-item-desc">Full trap data model: version, community, OID, varbinds, vendor, severity</div></div></div>
+        <div class="arch-item"><span class="arch-item-icon">📥</span><div><div class="arch-item-name">parse_trap_packets()</div><div class="arch-item-desc">Ingests SNMP traps from main PCAP pipeline</div></div></div>
+        <div class="arch-item"><span class="arch-item-icon">📄</span><div><div class="arch-item-name">parse_trap_csv()</div><div class="arch-item-desc">Standalone CSV/JSON trap export ingestion</div></div></div>
+        <div class="arch-item"><span class="arch-item-icon">📊</span><div><div class="arch-item-name">analyse_traps()</div><div class="arch-item-desc">Link flap, auth storm, config storm, risk score 0–100</div></div></div>
+        <div class="arch-item"><span class="arch-item-icon">🎨</span><div><div class="arch-item-name">generate_traps_html()</div><div class="arch-item-desc">6-section Traps tab: cards, charts, events, agents, security, AI button</div></div></div>
+      </div>
+
+      <div class="arch-col" style="--ac-color:var(--purple)">
+        <div class="arch-col-header">knowledge_base/ (RAG corpus)</div>
+        <div class="arch-item"><span class="arch-item-icon">📋</span><div><div class="arch-item-name">rfc_index.json</div><div class="arch-item-desc">Master KB index — extend with your own protocol entries</div></div></div>
+        <div class="arch-item"><span class="arch-item-icon">📁</span><div><div class="arch-item-name">exos/</div><div class="arch-item-desc">EXOS CLI references, show command guides, release notes</div></div></div>
+        <div class="arch-item"><span class="arch-item-icon">📁</span><div><div class="arch-item-name">rfcs/</div><div class="arch-item-desc">RFC protocol summaries chunked for retrieval</div></div></div>
+        <div class="arch-item"><span class="arch-item-icon">📁</span><div><div class="arch-item-name">runbooks/</div><div class="arch-item-desc">Your internal troubleshooting runbooks — auto-ingested on startup</div></div></div>
+        <div class="arch-item"><span class="arch-item-icon">🔑</span><div><div class="arch-item-name">_embed_cache.json</div><div class="arch-item-desc">Dense embedding cache — avoids re-encoding on restart</div></div></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ═══════════════════════════ INPUT/OUTPUT FLOWS ═══════════════════════════ -->
+<div class="wrap">
+  <section class="section">
+    <div class="section-label">Workflow Detail</div>
+    <h2 class="section-title">Key <span>data flows</span> in depth</h2>
+
+    <div class="flow-grid">
+      <!-- Live Capture -->
+      <div class="flow-card">
+        <div class="flow-card-header">
+          <span class="fh-icon">📡</span>
+          <span class="fh-title">Live Switch Capture</span>
+          <span class="fh-badge">SSH / Telnet</span>
+        </div>
+        <div class="flow-steps">
+          <div class="flow-item" style="--fi-color:var(--cyan)">
+            <div class="flow-dot">A</div>
+            <div class="flow-content">
+              <div class="flow-label">Pre-flight Auth Check</div>
+              <div class="flow-detail">SSH preferred, Telnet auto-fallback. Protocol=auto detects which is available.</div>
+            </div>
+          </div>
+          <div class="flow-item" style="--fi-color:var(--green)">
+            <div class="flow-dot">B</div>
+            <div class="flow-content">
+              <div class="flow-label">Snapshot /usr/local/tmp via SFTP</div>
+              <div class="flow-detail">Lists existing .pcap files before capture starts — used to detect the new file later.</div>
+            </div>
+          </div>
+          <div class="flow-item" style="--fi-color:var(--yellow)">
+            <div class="flow-dot">C</div>
+            <div class="flow-content">
+              <div class="flow-label">Send debug packet capture on</div>
+              <div class="flow-detail">Targets port / VLAN / interface. Capture runs for configured duration in background thread.</div>
+            </div>
+          </div>
+          <div class="flow-item" style="--fi-color:var(--orange)">
+            <div class="flow-dot">D</div>
+            <div class="flow-content">
+              <div class="flow-label">Poll SFTP until new .pcap appears</div>
+              <div class="flow-detail">Retries up to 11× / 1s intervals. Verifies file size is stable before downloading.</div>
+            </div>
+          </div>
+          <div class="flow-item" style="--fi-color:var(--red)">
+            <div class="flow-dot">E</div>
+            <div class="flow-content">
+              <div class="flow-label">SFTP Download (3-tier fallback)</div>
+              <div class="flow-detail">sftp.get() → sftp.open()/read() → SCP. 90s hard timeout. 64KB chunks with progress.</div>
+            </div>
+          </div>
+          <div class="flow-item" style="--fi-color:var(--purple)">
+            <div class="flow-dot">F</div>
+            <div class="flow-content">
+              <div class="flow-label">Parse → Analyse → Reload</div>
+              <div class="flow-detail">Full pipeline runs. Dashboard auto-reloads. Status polled via GET /api/capture-status.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MCP Live Query -->
+      <div class="flow-card">
+        <div class="flow-card-header">
+          <span class="fh-icon">🔌</span>
+          <span class="fh-title">MCP Live Switch Query</span>
+          <span class="fh-badge">stdlib SSE · JSON-RPC</span>
+        </div>
+        <div class="flow-steps">
+          <div class="flow-item" style="--fi-color:var(--cyan)">
+            <div class="flow-dot">1</div>
+            <div class="flow-content">
+              <div class="flow-label">Keyword Detection</div>
+              <div class="flow-detail">_is_mcp_query() checks for vlan, ospf, bgp, show, firmware etc. → routes to _ask_mcp().</div>
+            </div>
+          </div>
+          <div class="flow-item" style="--fi-color:var(--green)">
+            <div class="flow-dot">2</div>
+            <div class="flow-content">
+              <div class="flow-label">Raw SSE Socket Open</div>
+              <div class="flow-detail">Stdlib socket — no mcp SDK. GET /sse → background reader thread parses event: endpoint.</div>
+            </div>
+          </div>
+          <div class="flow-item" style="--fi-color:var(--purple)">
+            <div class="flow-dot">3</div>
+            <div class="flow-content">
+              <div class="flow-label">Initialize + tools/list</div>
+              <div class="flow-detail">JSON-RPC over POST to session URL. SSE queue delivers response. ~800 tools available.</div>
+            </div>
+          </div>
+          <div class="flow-item" style="--fi-color:var(--orange)">
+            <div class="flow-dot">4</div>
+            <div class="flow-content">
+              <div class="flow-label">Tool Selection</div>
+              <div class="flow-detail">_pick_tool_for_query() matches query patterns → tool name. IP extracted from prompt if present.</div>
+            </div>
+          </div>
+          <div class="flow-item" style="--fi-color:var(--yellow)">
+            <div class="flow-dot">5</div>
+            <div class="flow-content">
+              <div class="flow-label">tools/call → Live Switch</div>
+              <div class="flow-detail">MCP server executes CLI on EXOS switch. Returns raw JSON/text output via SSE stream.</div>
+            </div>
+          </div>
+          <div class="flow-item" style="--fi-color:var(--cyan)">
+            <div class="flow-dot">6</div>
+            <div class="flow-content">
+              <div class="flow-label">Ollama Formats Output</div>
+              <div class="flow-detail">Raw switch output sent to local LLM for human-readable formatting. "[Live via MCP]" badge added.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ═══════════════════════════ EXAMPLE SCENARIOS ═══════════════════════════ -->
+<div class="wrap">
+  <section class="section">
+    <div class="section-label">Real-World Examples</div>
+    <h2 class="section-title">NetScope in <span>action</span></h2>
+
+    <div class="example-grid">
+      <div class="example-card">
+        <div class="example-header">
+          <span class="eh-icon">🏠</span>
+          <span class="eh-title">DHCP Server Failure</span>
+          <span class="eh-tag" style="background:rgba(255,69,96,0.12);color:var(--red);border:1px solid rgba(255,69,96,0.3)">High Severity</span>
+        </div>
+        <div class="example-body">
+          <div class="example-step">
+            <div class="es-label">Input</div>
+            <div class="es-text">dhcp_failure.pcap — client sends 3 DISCOVERs, receives no OFFER</div>
+          </div>
+          <div class="example-step">
+            <div class="es-label">Feature Extraction</div>
+            <div class="es-code">dhcp_discover_count : 3
+dhcp_offer_count    : 0
+dhcp_ack_count      : 0</div>
+          </div>
+          <div class="example-step">
+            <div class="es-label">Rule Engine fires</div>
+            <div class="es-code">{severity:"high", layer:"L7", category:"DHCP",
+ title:"3 DISCOVERs, 0 OFFERs — server absent"}</div>
+          </div>
+          <div class="example-step">
+            <div class="es-label">AI Step 4 — EXOS Next Actions</div>
+            <div class="es-code">1. show dhcpv4 server
+2. show bootprelay
+3. configure bootprelay add &lt;server&gt; vlan &lt;n&gt;
+4. debug dhcp detail</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="example-card">
+        <div class="example-header">
+          <span class="eh-icon">⚡</span>
+          <span class="eh-title">SNMP Trap Storm</span>
+          <span class="eh-tag" style="background:rgba(155,109,255,0.12);color:var(--purple);border:1px solid rgba(155,109,255,0.3)">Risk Score: 78</span>
+        </div>
+        <div class="example-body">
+          <div class="example-step">
+            <div class="es-label">Input</div>
+            <div class="es-text">trap_export.csv — 847 traps from 3 agents, 5 minutes</div>
+          </div>
+          <div class="example-step">
+            <div class="es-label">Trap Correlation</div>
+            <div class="es-code">link_flaps  : 12  (10.1.1.1 · port 2:1 · every 8s)
+auth_storms : 2   (10.1.1.5 · 18 authFailure in 45s)
+cfg_storms  : 1   (10.1.1.1 · 16 saves in 60s via SNMP)
+weak_comm   : ["public"]</div>
+          </div>
+          <div class="example-step">
+            <div class="es-label">Risk Score Breakdown</div>
+            <div class="es-code">security ×15 = 30 | flaps ×10 = 20
+auth ×15 = 28 | weak_comm = +10 → 78/100</div>
+          </div>
+          <div class="example-step">
+            <div class="es-label">AI Narrative</div>
+            <div class="es-text">Config-change storm from 10.1.1.1 via SNMP suggests automated script. Auth-failure storm on 10.1.1.5 indicates brute-force. Rotate community strings, enable SNMPv3.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="example-card">
+        <div class="example-header">
+          <span class="eh-icon">🔐</span>
+          <span class="eh-title">EAPoL Timing Race</span>
+          <span class="eh-tag" style="background:rgba(255,124,53,0.12);color:var(--orange);border:1px solid rgba(255,124,53,0.3)">RAG Context</span>
+        </div>
+        <div class="example-body">
+          <div class="example-step">
+            <div class="es-label">Detected protocols</div>
+            <div class="es-text">EAPoL, RADIUS — ask_ai() triggers RAG lookup</div>
+          </div>
+          <div class="example-step">
+            <div class="es-label">RAG retrieves (chunk: EAPoL_timing_race)</div>
+            <div class="es-code">After 'configure netlogin radius reauthentication
+resume', switch immediately sends EAP-Request/
+Identity. Supplicant must be ready within 500ms
+or enters quiet-period (30s delay).</div>
+          </div>
+          <div class="example-step">
+            <div class="es-label">AI answer — grounded, not hallucinated</div>
+            <div class="es-text">References the exact EXOS reauthentication resume command and 500ms window from the verified runbook chunk. Suggests adding client delay or passive receive loop.</div>
+          </div>
+          <div class="example-step">
+            <div class="es-label">EXOS mode verification command</div>
+            <div class="es-code">show netlogin dot1x session
+debug netlogin</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="example-card">
+        <div class="example-header">
+          <span class="eh-icon">🛡</span>
+          <span class="eh-title">ARP + IP Spoofing (MITM)</span>
+          <span class="eh-tag" style="background:rgba(255,69,96,0.12);color:var(--red);border:1px solid rgba(255,69,96,0.3)">Critical · Cross-Layer</span>
+        </div>
+        <div class="example-body">
+          <div class="example-step">
+            <div class="es-label">Rule Engine (L2)</div>
+            <div class="es-code">ARP anomaly: 10.0.0.1 → 3 different MACs</div>
+          </div>
+          <div class="example-step">
+            <div class="es-label">Rule Engine (L3)</div>
+            <div class="es-code">IP spoofing suspect: 10.0.0.1 seen from
+MACs: aa:bb:cc and dd:ee:ff and 11:22:33</div>
+          </div>
+          <div class="example-step">
+            <div class="es-label">Cross-Layer Correlation fires</div>
+            <div class="es-code">{title: "ARP+IP Mismatch: MITM indicator",
+ severity: "critical", layer: "L2+L3",
+ detail: "ARP anomalies correlate with IP-to-MAC
+ inconsistency — strong MITM indicator"}</div>
+          </div>
+          <div class="example-step">
+            <div class="es-label">AI EXOS remediation</div>
+            <div class="es-code">configure iparp-inspection vlan &lt;n&gt;
+show iparp  |  show fdb mac &lt;mac&gt;</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ═══════════════════════════ TECH STACK ═══════════════════════════ -->
+<div class="wrap">
+  <section class="section">
+    <div class="section-label">Technology</div>
+    <h2 class="section-title">Tech <span>stack</span></h2>
+
+    <table class="tech-table">
+      <thead>
+        <tr>
+          <th>Layer</th>
+          <th>Component</th>
+          <th>Technology</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td class="td-layer">NETWORK</td><td class="td-name">Switch Connectivity</td><td class="td-tech">Paramiko · _Telnet (stdlib)</td><td class="td-desc">SSH preferred, Telnet auto-fallback. No external Telnet library needed.</td></tr>
+        <tr><td class="td-layer">PARSE</td><td class="td-name">PCAP Binary Reader</td><td class="td-tech">Pure Python struct</td><td class="td-desc">No Scapy. Handles libpcap both endian, PCAP/PCAPNG. EXOS header auto-strip.</td></tr>
+        <tr><td class="td-layer">PARSE</td><td class="td-name">tshark Enrichment</td><td class="td-tech">tshark -T json (optional)</td><td class="td-desc">Wireshark CLI. Degrades gracefully if absent. Adds DHCP names, SNMP OIDs, tunnels.</td></tr>
+        <tr><td class="td-layer">DETECT</td><td class="td-name">Rule Engine</td><td class="td-tech">Pure Python dict</td><td class="td-desc">30+ rules. Zero dependencies. Deterministic, auditable, no false negatives for known patterns.</td></tr>
+        <tr><td class="td-layer">DETECT</td><td class="td-name">ML Scoring</td><td class="td-tech">Pure Python math</td><td class="td-desc">Isolation-Forest-inspired. Z-score deviation. No sklearn. Confidence score per finding.</td></tr>
+        <tr><td class="td-layer">AI</td><td class="td-name">RAG Index</td><td class="td-tech">TF-IDF (stdlib) or sentence-transformers</td><td class="td-desc">Auto-upgrades to dense embeddings if library available. Cosine similarity search.</td></tr>
+        <tr><td class="td-layer">AI</td><td class="td-name">LLM Backends</td><td class="td-tech">Ollama · Claude API · OpenAI API</td><td class="td-desc">Runtime-switchable via UI. No restart needed. urllib.request only — no httpx/requests.</td></tr>
+        <tr><td class="td-layer">AI</td><td class="td-name">MCP Client</td><td class="td-tech">stdlib socket · threading · queue</td><td class="td-desc">Full SSE + JSON-RPC wire protocol. No mcp SDK. Works with any Python 3.x.</td></tr>
+        <tr><td class="td-layer">SERVER</td><td class="td-name">HTTP Server</td><td class="td-tech">ThreadingHTTPServer</td><td class="td-desc">Built-in. No Flask/FastAPI. Handles concurrent WebSocket + REST requests.</td></tr>
+        <tr><td class="td-layer">SERVER</td><td class="td-name">PTY Terminal</td><td class="td-tech">pty + WebSocket (Unix/macOS)</td><td class="td-desc">Real bash PTY. Auto-SSH to switch. connect / tconnect helpers. History. ANSI stripping.</td></tr>
+        <tr><td class="td-layer">UI</td><td class="td-name">Charts + Canvas</td><td class="td-tech">Vanilla JS Canvas2D</td><td class="td-desc">Donut chart, scatter timeline, flow sequence diagram — all inline. Zero CDN.</td></tr>
+        <tr><td class="td-layer">UI</td><td class="td-name">Dashboard HTML</td><td class="td-tech">HTML/CSS/JS (inline, make_html())</td><td class="td-desc">Single file. IBM Plex Mono. Command palette. Keyboard shortcuts. Light/dark theme.</td></tr>
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<!-- ═══════════════════════════ API REFERENCE ═══════════════════════════ -->
+<div class="wrap">
+  <section class="section">
+    <div class="section-label">API Reference</div>
+    <h2 class="section-title">REST + WebSocket <span>endpoints</span></h2>
+
+    <table class="api-table">
+      <thead><tr><th>Method</th><th>Path</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><span class="method-badge m-get">GET</span></td><td class="api-path">/</td><td class="api-desc">Serve dashboard. Shows welcome/setup page if no PCAP loaded yet.</td></tr>
+        <tr><td><span class="method-badge m-post">POST</span></td><td class="api-path">/api/capture</td><td class="api-desc">Start background switch capture. Body: {switch_ip, user, password, sw_port, vlan, duration, protocol}</td></tr>
+        <tr><td><span class="method-badge m-get">GET</span></td><td class="api-path">/api/capture-status</td><td class="api-desc">Poll capture progress. Returns {running, phase, error, pcap}. Used by dashboard progress bar.</td></tr>
+        <tr><td><span class="method-badge m-post">POST</span></td><td class="api-path">/api/capture-cancel</td><td class="api-desc">Forcefully stop a running capture and close SSH session.</td></tr>
+        <tr><td><span class="method-badge m-post">POST</span></td><td class="api-path">/api/chat</td><td class="api-desc">AI query — all sidebar modes. Passes detected protocols for RAG enrichment. Returns {response, via_mcp}.</td></tr>
+        <tr><td><span class="method-badge m-post">POST</span></td><td class="api-path">/api/config</td><td class="api-desc">Update AI backend/model/key at runtime without restart. Body: {backend, model, key}</td></tr>
+        <tr><td><span class="method-badge m-post">POST</span></td><td class="api-path">/upload</td><td class="api-desc">Upload PCAP file (multipart/form-data). Validates magic bytes, re-analyses, returns {ok, file, packets, summary, anomalies}.</td></tr>
+        <tr><td><span class="method-badge m-post">POST</span></td><td class="api-path">/upload-trap-csv</td><td class="api-desc">Upload SNMP trap CSV/JSON. Triggers snmp_trap_analyzer pipeline. Returns {ok, traps, agents}.</td></tr>
+        <tr><td><span class="method-badge m-post">POST</span></td><td class="api-path">/api/switch-pcap</td><td class="api-desc">Switch between original/uploaded PCAP slots without re-upload. Body: {slot: "original"|"uploaded"}</td></tr>
+        <tr><td><span class="method-badge m-get">GET</span></td><td class="api-path">/export/json</td><td class="api-desc">Export full analysis as JSON — packets (without hex/layers), proto_counts, anomalies.</td></tr>
+        <tr><td><span class="method-badge m-get">GET</span></td><td class="api-path">/export/csv</td><td class="api-desc">Export packet list as CSV with 18 standard fields (id, ts, proto, IPs, ports, flags, etc).</td></tr>
+        <tr><td><span class="method-badge m-get">GET</span></td><td class="api-path">/export/pcap</td><td class="api-desc">Download the raw PCAP file currently loaded (original or uploaded slot).</td></tr>
+        <tr><td><span class="method-badge m-ws">WS</span></td><td class="api-path">/ws/terminal</td><td class="api-desc">Interactive PTY terminal WebSocket. Bash shell, auto-SSH to switch on load. connect / tconnect helpers.</td></tr>
+      </tbody>
+    </table>
+  </section>
+</div>
+
+<!-- ═══════════════════════════ FOOTER ═══════════════════════════ -->
+<div class="wrap">
+  <footer class="footer">
+    <div class="footer-brand">// NetScope · AI Network Analyzer</div>
+    <div class="footer-tags">
+      <span class="footer-tag">Python 3.9+</span>
+      <span class="footer-tag">stdlib-only core</span>
+      <span class="footer-tag">ExtremeXOS v33.6.1</span>
+      <span class="footer-tag">2 files · zero CDN</span>
+      <span class="footer-tag">Hema 2025–2026</span>
+    </div>
+    <div class="footer-note">Built for network engineers who want answers, not another dashboard.</div>
+  </footer>
+</div>
+
+<script>
+function toggleExpand(el) {
+  const body = el.classList.contains('step-body') ? el : el.closest('.step-body');
+  if (!body) return;
+  const expand = body.querySelector('.step-expand');
+  const toggle = body.querySelector('.step-toggle');
+  if (!expand) return;
+  const isOpen = expand.classList.toggle('open');
+  if (toggle) toggle.classList.toggle('open', isOpen);
+}
+
+// Stagger animation for pipeline steps
+document.addEventListener('DOMContentLoaded', () => {
+  const steps = document.querySelectorAll('.pipeline-step');
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.style.opacity = '1';
+        e.target.style.transform = 'translateY(0)';
+      }
+    });
+  }, { threshold: 0.1 });
+  steps.forEach((s, i) => {
+    s.style.opacity = '0';
+    s.style.transform = 'translateY(24px)';
+    s.style.transition = `opacity 0.5s ${i * 0.07}s ease, transform 0.5s ${i * 0.07}s ease`;
+    obs.observe(s);
+  });
+
+  // Same for cards
+  document.querySelectorAll('.mode-card, .stat-card, .arch-col, .flow-card, .example-card').forEach((el, i) => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(16px)';
+    el.style.transition = `opacity 0.5s ${(i % 6) * 0.08}s ease, transform 0.5s ${(i % 6) * 0.08}s ease`;
+    new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.style.opacity = '1';
+          e.target.style.transform = 'translateY(0)';
+        }
+      });
+    }, { threshold: 0.08 }).observe(el);
+  });
+});
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
